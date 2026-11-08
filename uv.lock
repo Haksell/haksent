@@ -542,6 +542,7 @@ dependencies = [
     { name = "dotenv" },
     { name = "litellm" },
     { name = "openai" },
+    { name = "pydantic" },
 ]
 
 [package.metadata]
@@ -550,6 +551,7 @@ requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "litellm", specifier = ">=1.108.3" },
     { name = "openai", specifier = ">=3.46.0" },
+    { name = "pydantic", specifier = ">=2.14.3" },
 ]
 
 [[package]]
