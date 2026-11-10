@@ -1,37 +1,45 @@
+import asyncio
+import json
+
 from dotenv import find_dotenv, load_dotenv
-from litellm import completion
-from litellm.types.utils import ModelResponse
+from litellm import ModelResponse, acompletion
 from pydantic import BaseModel
+
+semaphore = asyncio.Semaphore(3)
 
 
 class ExtractedInfo(BaseModel):
-    name: str
-    email: str
-    phone: str | None = None
-    job: str | None = None
+    result: int
 
 
-def main():
+async def get_response(prompt: str) -> str:
+    async with semaphore:
+        response = await acompletion(
+            model="gpt-6-luna",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4096,
+            response_format=ExtractedInfo,
+            num_retries=3,
+        )
+        assert isinstance(response, ModelResponse)
+        text = response.choices[0].message.content
+        assert text is not None
+        res = json.loads(text)
+        return res["result"]
+
+
+async def main():
     load_dotenv(find_dotenv())
 
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {
-            "role": "user",
-            "content": "My name is John Smith, my email is john@example.com, and my phone is 555-1234.",
-        },
-    ]
-    response = completion(
-        model="gpt-6-luna",
-        max_tokens=2048,
-        messages=messages,
-        response_format=ExtractedInfo,
-    )
-    assert isinstance(response, ModelResponse)
-    text = response.choices[0].message.content
-    assert text is not None
-    print(text)
+    prompts = [f"What is {i} + {i}?" for i in range(5)]
+    tasks = list(map(get_response, prompts))
+    results = await asyncio.gather(*tasks)
+    for i, (prompt, result) in enumerate(zip(prompts, results)):
+        print(f"Q: {prompt}")
+        print(f"A: {result}")
+        print(i + i == result)
+        print()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
